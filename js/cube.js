@@ -24,14 +24,17 @@ app.Object = function (vertexArray, triangleArray, textureArray, imageSource) {
     var triangles = triangleArray;
     var triangleCount = triangleArray.length;
     var textureMap = textureArray;
-    var image = new Image();
+
+    var bones;
+
 
     var ready = false;
 
+    var image = new Image();
     image.onload = function() {
-        ready = true;
+        console.log("image readystate true");
+        image.readyState = true;
     };
-
     image.src = imageSource;
 
     function getTransforms() {
@@ -106,8 +109,51 @@ app.Object = function (vertexArray, triangleArray, textureArray, imageSource) {
     }
 
     return {
-        ready : ready
+        // variables
+        vertices : vertices,
+        triangles: triangles,
+        textureMap : textureMap,
+        triangleCount : triangleCount,
+        ready : ready,
+        image : image,
+
+        boneIds : bones,
+
+        pos : pos,
+        rotation : rotation,
+        scale : scale,
+
+        // functions
+        getTransforms : getTransforms
     };
+};
+
+
+app.floor = {
+    rotation: 0,
+    vertices: [
+//    0.0, 0.1, 1.0,
+//    1.0, 0.1, 1.0,
+//    0.0, 0.0, 0.0,
+//    1.0, 0.0, 1.0],
+
+        100.0, -1.0, 100.0,
+        -100.0, -1.0, 100.0,
+        100.0, -1.0, -100.0,
+        -100.0, -1.0, -100.0],
+
+    triangles : [
+        //Front
+        0, 1, 2,
+        1, 2, 3,
+    ],
+
+    texture : [
+        1.0, 1.0,
+        1.0, 0.0,
+        0.0, 1.0,
+        0.0, 0.0,
+    ]
 };
 
 app.cube = {
@@ -140,9 +186,9 @@ app.cube = {
 
         //Top
         1.0, 1.0, 1.0,
-        -1.0, -1.0, 1.0,
-        1.0, -1.0, -1.0,
-        -1.0, -1.0, -1.0,
+        -1.0, 1.0, 1.0,
+        1.0, 1.0, -1.0,
+        -1.0, 1.0, -1.0,
 
         //Bottom
         1.0, -1.0, 1.0,

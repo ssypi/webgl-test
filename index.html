@@ -1,76 +1,129 @@
 <!DOCTYPE html>
-<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
-<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
-<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-        <title></title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width">
+<!--[if lt IE 7]>
+<html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>
+<html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>
+<html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js"> <!--<![endif]-->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width">
 
-        <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+    <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
 
-        <link rel="stylesheet" href="css/normalize.css">
-        <link rel="stylesheet" href="css/main.css">
-        <script src="js/vendor/modernizr-2.6.2.min.js"></script>
-    </head>
-    <body>
-        <!--[if lt IE 7]>
-            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
-        <![endif]-->
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/main.css">
+    <script src="js/vendor/modernizr-2.6.2.min.js"></script>
+</head>
+<body>
+<!--[if lt IE 7]>
+<p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade
+    your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to
+    improve your experience.</p>
+<![endif]-->
 
-        <!-- Add your site or application content here -->
-        <div id="wrapper">
-            <canvas id="mycanvas" width="800" height="600" style="border: 1px solid black">Your browser doesn't support canvas objects.</canvas>
-            <div id="ui">
-                <div id="top">
-                    FPS: <span id="fps">0</span> <span style="float: right">Use arrow keys to move.</span>
-                </div>
-            </div>
+<!-- Add your site or application content here -->
+<div id="wrapper">
+    <canvas id="mycanvas" width="800" height="600" style="border: 1px solid black">Your browser doesn't support canvas
+        objects.
+    </canvas>
+    <div id="ui">
+        <div id="top">
+            FPS: <span id="fps">0</span> <span style="float: right">Use arrow keys to move.</span>
         </div>
+    </div>
+</div>
 
-        <!--<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>-->
-        <!--<script>window.jQuery || document.write('<script src="js/vendor/jquery-1.9.1.min.js"><\/script>')</script>-->
-        <script src="js/plugins.js"></script>
-        <script id="vertex" type="x-shader/x-vertex">
-            attribute highp vec3 vertexPosition;
-            attribute highp vec2 textureCoord;
+<!--<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>-->
+<!--<script>window.jQuery || document.write('<script src="js/vendor/jquery-1.9.1.min.js"><\/script>')</script>-->
+<script src="js/plugins.js"></script>
+<script id="vertex" type="x-shader/x-vertex">
+    attribute highp vec3 vertexPosition;
+    attribute highp vec2 textureCoord;
 
-            uniform highp mat4 transformationMatrix;
-            uniform highp mat4 perspectiveMatrix;
-
-            varying highp vec2 vTextureCoord;
-
-            void main() {
-                gl_Position = perspectiveMatrix * transformationMatrix * vec4(vertexPosition, 1.0);
-                vTextureCoord = textureCoord;
-            }
-        </script>
-        <script id="fragment" type="x-shader/x-fragment">
-            varying highp vec2 vTextureCoord;
-
-            uniform sampler2D uSampler;
-
-            void main(void) {
-            highp vec4 texelColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
-            gl_FragColor = texelColor;
-            }
-        </script>
-        <script src="js/cube.js"></script>
-        <script src="js/objects/puudg.js"></script>
-        <script src="js/objects/cube.js"></script>
-        <script src="js/input-control.js"></script>
-        <script src="js/main.js"></script>
+    attribute highp vec4 skinIndices;
+    attribute highp vec4 skinWeights;
 
 
-        <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
-        <!--<script>-->
-            <!--var _gaq=[['_setAccount','UA-XXXXX-X'],['_trackPageview']];-->
-            <!--(function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];-->
-            <!--g.src='//www.google-analytics.com/ga.js';-->
-            <!--s.parentNode.insertBefore(g,s)}(document,'script'));-->
-        <!--</script>-->
-    </body>
+    uniform highp mat4 transformationMatrix;
+    uniform highp mat4 perspectiveMatrix;
+    uniform highp mat4 boneMatrix[50];
+
+
+    varying highp vec2 vTextureCoord;
+
+    mat4 accumulateSkinMat() {
+       mat4 result = skinWeights.x * boneMatrix[int(skinIndices.x)];
+       result = result + skinWeights.y * boneMatrix[int(skinIndices.y)];
+       result = result + skinWeights.z * boneMatrix[int(skinIndices.z)];
+       result = result + skinWeights.w * boneMatrix[int(skinIndices.w)];
+       return result;
+    }
+
+    void main() {
+    vTextureCoord = textureCoord;
+    mat4 iMat = mat4(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+    //vec4 vertexMatrix = perspectiveMatrix * (transformationMatrix * vec4(vertexPosition, 1.0));
+    mat4 vMat = transformationMatrix * accumulateSkinMat();
+    vec4 vPos = vMat * vec4(vertexPosition, 1.0);
+    gl_Position = perspectiveMatrix * vPos;
+    }
+</script>
+<!--for(int i = 0; i < 4; i++) {-->
+<!--float weight;-->
+<!--int boneIndex;-->
+<!--if (i == 0) {-->
+<!--weight = skinWeights.x;-->
+<!--boneIndex = int(skinIndices.x);-->
+<!--} else if (i == 1) {-->
+<!--weight = skinWeights.y;-->
+<!--boneIndex = int(skinIndices.y);-->
+<!--} else if (i == 2) {-->
+<!--weight = skinWeights.z;-->
+<!--boneIndex = int(skinIndices.z);-->
+<!--} else if (i == 3) {-->
+<!--weight = skinWeights.w;-->
+<!--boneIndex = int(skinIndices.w);-->
+<!--}-->
+<!--skinnedMatrix[i] =  boneMatrix[boneIndex] * vertexMatrix * weight;-->
+<!--}-->
+<!--//gl_Position = perspectiveMatrix * transformationMatrix * vec4(vertexPosition, 1.0) * boneMatrix[0];-->
+<script id="fragment" type="x-shader/x-fragment">
+    //#ifdef GL_FRAGMENT_PRECISION_HIGH
+    //precision highp float;
+    //#else
+    //precision mediump float;
+    //#endif
+
+    varying highp vec2 vTextureCoord;
+
+    uniform sampler2D uSampler;
+
+    void main(void) {
+    highp vec4 texelColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+    gl_FragColor = texelColor;
+    }
+</script>
+<script src="js/cube.js"></script>
+<!--<script src="js/objects/puudg.json"></script>-->
+<!--<script src="js/objects/cube.js"></script>-->
+<script src="js/input-control.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/model.js"></script>
+<script src="js/animation.js"></script>
+<script src="js/main.js"></script>
+
+<!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
+<!--<script>-->
+<!--var _gaq=[['_setAccount','UA-XXXXX-X'],['_trackPageview']];-->
+<!--(function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];-->
+<!--g.src='//www.google-analytics.com/ga.js';-->
+<!--s.parentNode.insertBefore(g,s)}(document,'script'));-->
+<!--</script>-->
+</body>
 </html>

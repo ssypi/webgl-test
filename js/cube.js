@@ -25,6 +25,8 @@ app.Object = function (vertexArray, triangleArray, textureArray, imageSource) {
     var triangleCount = triangleArray.length;
     var textureMap = textureArray;
 
+    var bones;
+
 
     var ready = false;
 
@@ -114,6 +116,8 @@ app.Object = function (vertexArray, triangleArray, textureArray, imageSource) {
         triangleCount : triangleCount,
         ready : ready,
         image : image,
+
+        boneIds : bones,
 
         pos : pos,
         rotation : rotation,

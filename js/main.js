@@ -1,3 +1,5 @@
+/*globals model*/
+
 var app = app || {};
 
 (function (scope, undefined) {
@@ -43,10 +45,24 @@ var app = app || {};
 
         gl.useProgram(program);
 
+
+//        program.vCount = gl.getAttribLocation(program, "jointsCount");
+//        gl.enableVertexAttribArray(program.vCount);
+
+        program.skinIndices = gl.getAttribLocation(program, "skinIndices");
+        gl.enableVertexAttribArray(program.skinIndices);
+
+        program.skinWeights = gl.getAttribLocation(program, "skinIndices");
+        gl.enableVertexAttribArray(program.skinWeights);
+
         program.vertexPosition = gl.getAttribLocation(program, "vertexPosition");
         gl.enableVertexAttribArray(program.vertexPosition);
+
+
         program.vertexTexture = gl.getAttribLocation(program, "textureCoord");
         gl.enableVertexAttribArray(program.vertexTexture);
+
+
     }
 
     function compileShader(shaderId, shaderType) {
@@ -63,49 +79,38 @@ var app = app || {};
         return shader;
     }
 
-    function prepareModel(model) {
-        model.image = loadTexture(model.image);
-
-        //Convert Arrays to buffers
-        var buffer = gl.createBuffer();
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.vertices), gl.STATIC_DRAW);
-        model.vertices = buffer;
-
-        buffer = gl.createBuffer();
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(model.triangles), gl.STATIC_DRAW);
-        model.triangles = buffer;
-
-        buffer = gl.createBuffer();
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(model.textureMap), gl.STATIC_DRAW);
-        model.textureMap = buffer;
-        model.ready = true;
-        console.log("model ready: " + model.ready);
-    }
+    var done = false;
 
     function draw(model) {
-        if (model.image.readyState && !model.ready) {
-            prepareModel(model);
-        }
+//        if(model.ready && app.animaatio.ready && !done) {
+//            console.log("applying");
+//            app.animaatio.applyFrame(1, app.objekti);
+//            model.compileBuffers(gl);
+//            done = true;
+//        }
+//        console.log(model.image.readyState);
         if (model.ready) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, model.vertices);
-            gl.vertexAttribPointer(program.vertexPosition, 3, gl.FLOAT, false, 0, 0);
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, model.textureMap);
-            gl.vertexAttribPointer(program.vertexTexture, 2, gl.FLOAT, false, 0, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, model.skinIndexBuffer);
+            gl.vertexAttribPointer(program.skinIndices, 4, gl.FLOAT, false, 16, 0);
 
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, model.triangles);
+            gl.bindBuffer(gl.ARRAY_BUFFER, model.skinWeightBuffer);
+            gl.vertexAttribPointer(program.skinWeights, 4, gl.FLOAT, false, 16, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, model.vertexBuffer);
+            gl.vertexAttribPointer(program.vertexPosition, 3, gl.FLOAT, false, 12, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, model.textureBuffer);
+            gl.vertexAttribPointer(program.vertexTexture, 2, gl.FLOAT, false, 8, 0);
+
+
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, model.triangleBuffer);
 
             var perspectiveMatrix = makePerspective(45, aspect, 1, 1000.0);
             var transformMatrix = model.getTransforms();
 
             gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, model.image);
+            gl.bindTexture(gl.TEXTURE_2D, model.texture);
 
             gl.uniform1i(gl.getUniformLocation(program, "uSampler"), 0);
 
@@ -115,7 +120,50 @@ var app = app || {};
             var tMatrix = gl.getUniformLocation(program, "transformationMatrix");
             gl.uniformMatrix4fv(tMatrix, false, new Float32Array(transformMatrix));
 
-            gl.drawElements(gl.TRIANGLES, model.triangleCount, gl.UNSIGNED_SHORT, 0);
+
+            if (model.dirtyBones === undefined || model.dirtyBones === true) {
+                console.log("bones dirty, updating");
+                for (var index = 0; index < model.bones.length; index++) {
+                    var bone = model.bones[index];
+
+                    if (bone.parent !== undefined && bone.parent !== -1) {
+                        var parent = model.bones[bone.parent];
+                        bone.worldXForm = multiplyMatrix(parent.worldXForm, bone.transformationMatrix);
+                    } else {
+                        bone.worldXForm = bone.transformationMatrix;
+                    }
+
+                    bone.worldXForm = multiplyMatrix(bone.worldXForm, bone.inverseBind);
+
+                    console.log(bone.worldXForm);
+                    console.log(bone.name);
+                    model.bones[index] = bone;
+                }
+                model.dirtyBones = false;
+            }
+
+            var boneMatrix = [];
+            var bonesCount = model.bones.length;
+            for (var i = 0; i < bonesCount; i++) {
+                boneMatrix.push(gl.getUniformLocation(program, "boneMatrix[" + i + "]"));
+                gl.uniformMatrix4fv(boneMatrix[i], true, new Float32Array(model.bones[i].worldXForm));
+            }
+
+
+//            boneMatrix.push(gl.getUniformLocation(program, "boneMatrix[0]"));
+//            boneMatrix.push(gl.getUniformLocation(program, "boneMatrix[1]"));
+
+//            var boneMatrix = gl.getUniformLocation(program, "boneMatrix");
+//            console.log(model.bones[0].transformationMatrix);
+//            model.ready = false;
+//            gl.uniformMatrix4fv(boneMatrix, false, new Float32Array(model.bones[0].transformationMatrix));
+//            gl.uniformMatrix4fv(boneMatrix[0], false, new Float32Array(model.bones[0].transformationMatrix));
+//            gl.uniformMatrix4fv(boneMatrix[1], false, new Float32Array(model.bones[1].transformationMatrix));
+
+
+            var triangleCount = model.triangles.length;
+
+            gl.drawElements(gl.TRIANGLES, triangleCount, gl.UNSIGNED_SHORT, 0);
 
         }
     }
@@ -165,14 +213,22 @@ var app = app || {};
 //        };
 ////        textureImage.src = "texture.png";
 
-        app.objekti = new app.Object(app.puudg.verticePosition, app.puudg.triangles, app.puudg.texturePosition, "minipudge_color.png");
+//        app.objekti = new app.Object(app.puudg.verticePosition, app.puudg.triangles, app.puudg.texturePosition, "minipudge_color.png");
 
-        console.log(app.cube.vertices.length);
-        console.log(app.cube4.vertices.length);
-        console.log(app.cube.triangles.length);
-        console.log(app.cube4.triangles.length);
-        console.log(app.cube.texture.length);
-        console.log(app.cube4.texture.length);
+
+        app.objekti = new app.Model();
+        app.animaatio = new app.Animation();
+        app.animaatio.load("js/objects/testi");
+
+        app.objekti.load(gl, "js/objects/testi");
+//        app.objekti.loadTexture("minipudge_color.png");
+
+//        console.log(app.cube.vertices.length);
+//        console.log(app.cube4.vertices.length);
+//        console.log(app.cube.triangles.length);
+//        console.log(app.cube4.triangles.length);
+//        console.log(app.cube.texture.length);
+//        console.log(app.cube4.texture.length);
 
         app.lattia = new app.Object(app.floor.vertices, app.floor.triangles, app.floor.texture, "texture.png");
 
@@ -183,50 +239,51 @@ var app = app || {};
         app.lattia.scale.x = 1;
         app.lattia.scale.y = 1;
         app.lattia.scale.z = 1;
-
-        app.objekti.pos.x = 0;
-        app.objekti.pos.y = 0;
-        app.objekti.pos.z = 5;
-
-        app.objekti.rotation.y = 0;
-
-        app.objekti.scale.x = 1;
-        app.objekti.scale.y = 1;
-        app.objekti.scale.z = 1;
-
-        app.objekti.pos.z = 100;
-        app.objekti.pos.y = -20;
-
-        //My Model Was a bit too big
-        app.objekti.scale.x = 0.5;
-        app.objekti.scale.y = 0.5;
-        app.objekti.scale.z = 0.5;
-
-        //And Backwards
-        app.objekti.rotation.y = 180;
+//
+//        app.objekti.pos.x = 0;
+//        app.objekti.pos.y = 0;
+//        app.objekti.pos.z = 5;
+//
+//        app.objekti.rotation.y = 0;
+//
+//        app.objekti.scale.x = 1;
+//        app.objekti.scale.y = 1;
+//        app.objekti.scale.z = 1;
+//
+//        app.objekti.pos.z = 100;
+//        app.objekti.pos.y = -20;
+//
+//        //My Model Was a bit too big
+//        app.objekti.scale.x = 0.5;
+//        app.objekti.scale.y = 0.5;
+//        app.objekti.scale.z = 0.5;
+//
+//        //And Backwards
+//        app.objekti.rotation.y = 180;
 
         var building;
 
         setTimeout(update, 33);
-
-        LoadModel("minipudge", function (VerticeMap, Triangles, TextureMap) {
-            building = new app.Object(VerticeMap, Triangles, TextureMap, "minipudge_color.png");
-
-            building.pos.z = 100;
-            building.pos.y = -20;
-
-            //My Model Was a bit too big
-            building.scale.x = 0.5;
-            building.scale.y = 0.5;
-            building.scale.z = 0.5;
-
-            //And Backwards
-            building.rotation.y = 180;
-
-//            app.objekti = building;
-
-            setTimeout(update, 33);
-        });
+//
+//        LoadModel("minipudge", function (VerticeMap, Triangles, TextureMap) {
+////            building = new app.Object(VerticeMap, Triangles, TextureMap, "minipudge_color.png");
+//
+////            building = {};
+////            building.pos.z = 100;
+////            building.pos.y = -20;
+////
+////            //My Model Was a bit too big
+////            building.scale.x = 0.5;
+////            building.scale.y = 0.5;
+////            building.scale.z = 0.5;
+////
+////            //And Backwards
+////            building.rotation.y = 180;
+//
+////            app.objekti = building;
+//
+//            setTimeout(update, 33);
+//        });
     }
 
     var fps = 0;
@@ -249,7 +306,7 @@ var app = app || {};
         app.inputManager.update(app.objekti);
 //        app.objekti.rotation.y += 0.2;
         gl.clear(16384 | 256);
-        draw(app.lattia);
+//        draw(app.lattia);
         draw(app.objekti);
 
         var thisFrameFPS = 1000 / (getTime() - lastUpdate);
@@ -265,112 +322,6 @@ var app = app || {};
         var next_frame = (1000 / 60) - spent_time;
 
         setTimeout(update, next_frame);
-    }
-
-    function LoadModel(modelName, callback) {
-        var Ajax = new XMLHttpRequest();
-        Ajax.onreadystatechange = function () {
-            if (Ajax.readyState === 4 && Ajax.status === 200) {
-                //Parse Model Data
-                var script = Ajax.responseText.split("\n");
-
-                var vertices = [];
-                var verticeMap = [];
-
-                var triangles = [];
-
-                var textures = [];
-                var textureMap = [];
-
-                var normals = [];
-                var normalMap = [];
-
-                var counter = 0;
-                for (var property in script) {
-                    if (script.hasOwnProperty(property)) {
-                        var line = script[property];
-                        var row;
-                        //If Vertice Line
-                        if (line.substring(0, 2) == "v ") {
-                            row = line.substring(2).split(" ");
-                            vertices.push({
-                                X: parseFloat(row[0]),
-                                Y: parseFloat(row[1]),
-                                Z: parseFloat(row[2])
-                            });
-                        }
-                        //Texture Line
-                        else if (line.substring(0, 2) == "vt") {
-                            row = line.substring(3).split(" ");
-                            textures.push({
-                                X: parseFloat(row[0]),
-                                Y: parseFloat(row[1])
-                            });
-                        }
-                        //Normals Line
-                        else if (line.substring(0, 2) === "vn") {
-                            row = line.substring(3).split(" ");
-                            normals.push({
-                                X: parseFloat(row[0]),
-                                Y: parseFloat(row[1]),
-                                Z: parseFloat(row[2])
-                            });
-                        }
-                        //Mapping Line
-                        else if (line.substring(0, 2) === "f ") {
-                            row = line.substring(2).split(" ");
-                            var index;
-                            for (var T in row) {
-                                //Remove Blank Entries
-                                if (row[T] !== "") {
-                                    //If this is a multi-value entry
-                                    if (row[T].indexOf("/") != -1) {
-                                        //Split the different values
-                                        var TC = row[T].split("/");
-                                        //Increment The Triangles Array
-                                        triangles.push(counter);
-                                        counter++;
-
-                                        //Insert the Vertices
-                                        index = parseInt(TC[0]) - 1;
-                                        verticeMap.push(vertices[index].X);
-                                        verticeMap.push(vertices[index].Y);
-                                        verticeMap.push(vertices[index].Z);
-
-                                        //Insert the Textures
-                                        index = parseInt(TC[1]) - 1;
-                                        textureMap.push(textures[index].X);
-                                        textureMap.push(textures[index].Y);
-
-                                        //If This Entry Has Normals Data
-                                        if (TC.length > 2) {
-                                            //Insert Normals
-                                            index = parseInt(TC[2]) - 1;
-                                            normalMap.push(normals[index].X);
-                                            normalMap.push(normals[index].Y);
-                                            normalMap.push(normals[index].Z);
-                                        }
-                                    }
-                                    //For rows with just vertices
-                                    else {
-                                        triangles.push(counter); //Increment The Triangles Array
-                                        counter++;
-                                        index = parseInt(row[T]) - 1;
-                                        verticeMap.push(vertices[index].X);
-                                        verticeMap.push(vertices[index].Y);
-                                        verticeMap.push(vertices[index].Z);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                //Return The Arrays
-                callback(verticeMap, triangles, textureMap, normalMap);
-            }
-        };
-        Ajax.open("GET", modelName + ".obj", true);
-        Ajax.send();
     }
 
     initialize();

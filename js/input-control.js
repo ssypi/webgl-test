@@ -39,6 +39,10 @@ var app = app || {};
                 object.rotation.y -= 0.8;
             }
 
+            if (keys[32]) { // spacebar
+                app.animaatio.applyFrame(4, app.objekti);
+            }
+
             if (keys[38]) { // up
                 object.pos.x = object.pos.x - SPEED * Math.cos(radians);
                 object.pos.z = object.pos.z - SPEED * Math.sin(radians);
